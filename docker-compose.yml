@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  python-publisher:
+    build: ./python-publisher
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PATTERN=${PATTERN:-both}
+    restart: unless-stopped
+
+  go-subscriber:
+    build: ./go-subscriber
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PATTERN=${PATTERN:-both}
+    restart: unless-stopped
+
+volumes:
+  redis_data:
